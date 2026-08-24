@@ -21,3 +21,15 @@ npm run dev
 ```
 
 Abra `http://localhost:3000` em dois navegadores ou dispositivos na mesma rede.
+
+## Estrutura
+
+```text
+backend/server.ts  # HTTP, WebSocket e sinalizacao WebRTC
+frontend/app.ts    # interface e transferencia via DataChannel
+frontend/index.html
+frontend/styles.css
+```
+
+O navegador continua carregando `/app.js`; o backend gera essa resposta a partir
+de `frontend/app.ts` em tempo de execucao.

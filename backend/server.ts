@@ -1,7 +1,8 @@
 import { createHash, randomBytes } from "node:crypto";
-import { createReadStream, existsSync } from "node:fs";
+import { createReadStream, existsSync, readFileSync } from "node:fs";
 import { extname, join, normalize } from "node:path";
 import { createServer } from "node:http";
+import { stripTypeScriptTypes } from "node:module";
 
 const port = Number(process.env.PORT ?? 3000);
 const publicDir = join(process.cwd(), "frontend");
@@ -28,6 +29,14 @@ const mimeTypes: Record<string, string> = {
 
 const server = createServer((req, res) => {
   const url = new URL(req.url ?? "/", `http://${req.headers.host}`);
+
+  if (url.pathname === "/app.js") {
+    const source = readFileSync(join(publicDir, "app.ts"), "utf8");
+    res.writeHead(200, { "content-type": "text/javascript; charset=utf-8" });
+    res.end(stripTypeScriptTypes(source));
+    return;
+  }
+
   const requestedPath = url.pathname === "/" ? "/index.html" : url.pathname;
   const filePath = normalize(join(publicDir, requestedPath));
 

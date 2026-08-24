@@ -8,30 +8,68 @@
   </head>
   <body>
     <main>
-      <section class="panel">
-        <h1>Transfer</h1>
-        <p>Crie uma sessao, compartilhe o codigo e envie arquivos direto pelo navegador.</p>
-
-        <div class="actions">
-          <button id="createSession">Criar sessao</button>
-          <form id="joinForm">
-            <input id="sessionCode" placeholder="Codigo" maxlength="6" autocomplete="off" />
-            <button type="submit">Entrar</button>
-          </form>
+      <header class="hero">
+        <div class="brand-block">
+          <span class="eyebrow">P2P file transfer</span>
+          <h1>Transfer</h1>
+          <p>Sessoes temporarias para enviar arquivos direto entre dois navegadores.</p>
         </div>
-
-        <div class="status">
+        <div id="connectionPill" class="connection-pill" data-state="idle">
+          <span class="status-dot"></span>
           <span id="statusText">Desconectado</span>
-          <strong id="codeText"></strong>
         </div>
-      </section>
+      </header>
 
-      <section class="panel transfer">
-        <input id="fileInput" type="file" disabled />
-        <button id="sendFile" disabled>Enviar arquivo</button>
-        <progress id="progress" value="0" max="100"></progress>
-        <ul id="log"></ul>
-      </section>
+      <div class="workspace">
+        <section class="panel session-panel" aria-labelledby="sessionTitle">
+          <div class="panel-heading">
+            <div>
+              <span class="panel-kicker">Conexao</span>
+              <h2 id="sessionTitle">Sessao</h2>
+            </div>
+            <strong id="codeText"></strong>
+          </div>
+          <div class="actions">
+            <button id="createSession">Criar sessao</button>
+            <form id="joinForm">
+              <input id="sessionCode" placeholder="Codigo" maxlength="6" autocomplete="off" />
+              <button type="submit">Entrar</button>
+            </form>
+          </div>
+        </section>
+
+        <section class="panel transfer" aria-labelledby="transferTitle">
+          <div class="panel-heading">
+            <div>
+              <span class="panel-kicker">Arquivo</span>
+              <h2 id="transferTitle">Transferencia</h2>
+            </div>
+            <span class="hint">WebRTC</span>
+          </div>
+          <div class="file-row">
+            <label class="file-picker">
+              <input id="fileInput" type="file" disabled />
+              <span id="fileLabel">Selecionar arquivo</span>
+              <small id="fileMeta">Nenhum arquivo selecionado</small>
+            </label>
+            <button id="sendFile" disabled>Enviar</button>
+          </div>
+          <div class="progress-wrap">
+            <progress id="progress" value="0" max="100"></progress>
+            <span id="progressText">0%</span>
+          </div>
+        </section>
+
+        <section class="panel activity" aria-labelledby="activityTitle">
+          <div class="panel-heading compact">
+            <div>
+              <span class="panel-kicker">Historico</span>
+              <h2 id="activityTitle">Atividade</h2>
+            </div>
+          </div>
+          <ul id="log"></ul>
+        </section>
+      </div>
     </main>
 
     <script type="module" src="/app.js"></script>
