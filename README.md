@@ -14,6 +14,9 @@ No recebimento, o app usa a File System Access API quando disponivel. Assim o ar
 e gravado direto no disco em vez de ficar inteiro na memoria. Em navegadores sem essa
 API, ele cai para o modo compativel e monta o arquivo em memoria no final.
 
+Cada chunk enviado pelo DataChannel carrega um SHA-256. O receptor calcula o hash
+do chunk recebido antes de gravar, interrompendo a transferencia se houver divergencia.
+
 ## Rodar
 
 ```bash

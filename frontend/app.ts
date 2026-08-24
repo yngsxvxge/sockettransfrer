@@ -21,6 +21,7 @@ let peerConnection: RTCPeerConnection | undefined;
 let dataChannel: RTCDataChannel | undefined;
 let sessionCode = "";
 let incomingFile: IncomingFile | undefined;
+let pendingIncomingChunk: Extract<FileMessage, { kind: "file-chunk" }> | undefined;
 let pendingOutboundFile: File | undefined;
 
 type SignalingMessage =
@@ -39,6 +40,7 @@ type RtcSignal =
 
 type FileMessage =
   | { kind: "file-offer"; name: string; size: number; type: string }
+  | { kind: "file-chunk"; index: number; size: number; sha256: string }
   | { kind: "file-ready" }
   | { kind: "file-rejected" }
   | { kind: "file-done" };
@@ -240,11 +242,15 @@ async function startFileSend() {
   log(`Enviando ${file.name}...`);
 
   let offset = 0;
+  let index = 0;
   while (offset < file.size) {
     await waitForBuffer();
     const chunk = await file.slice(offset, offset + chunkSize).arrayBuffer();
+    const sha256 = await sha256Hex(chunk);
+    dataChannel.send(JSON.stringify({ kind: "file-chunk", index, size: chunk.byteLength, sha256 }));
     dataChannel.send(chunk);
     offset += chunk.byteLength;
+    index += 1;
     setProgress(Math.round((offset / file.size) * 100));
   }
 
@@ -267,6 +273,11 @@ async function handleFileMessage(event: MessageEvent<string | ArrayBuffer>) {
       return;
     }
 
+    if (message.kind === "file-chunk") {
+      pendingIncomingChunk = message;
+      return;
+    }
+
     if (message.kind === "file-rejected") {
       pendingOutboundFile = undefined;
       sendFileButton.disabled = false;
@@ -282,8 +293,13 @@ async function handleFileMessage(event: MessageEvent<string | ArrayBuffer>) {
   }
 
   if (!incomingFile) return;
+  if (!pendingIncomingChunk) {
+    log("Chunk recebido sem metadados de validacao.");
+    return;
+  }
 
-  await writeIncomingChunk(event.data);
+  await writeIncomingChunk(event.data, pendingIncomingChunk);
+  pendingIncomingChunk = undefined;
 }
 
 async function prepareIncomingFile(message: Extract<FileMessage, { kind: "file-offer" }>) {
@@ -343,8 +359,18 @@ async function prepareIncomingFile(message: Extract<FileMessage, { kind: "file-o
   dataChannel?.send(JSON.stringify({ kind: "file-ready" }));
 }
 
-async function writeIncomingChunk(chunk: ArrayBuffer) {
+async function writeIncomingChunk(chunk: ArrayBuffer, expected: Extract<FileMessage, { kind: "file-chunk" }>) {
   if (!incomingFile) return;
+
+  const actualHash = await sha256Hex(chunk);
+  if (chunk.byteLength !== expected.size || actualHash !== expected.sha256) {
+    pendingIncomingChunk = undefined;
+    log(`Falha de integridade no chunk ${expected.index}. Transferencia interrompida.`);
+    dataChannel?.send(JSON.stringify({ kind: "file-rejected" }));
+    incomingFile = undefined;
+    disableTransfer();
+    return;
+  }
 
   if (incomingFile.writable) {
     incomingFile.writeQueue = (incomingFile.writeQueue ?? Promise.resolve()).then(() =>
@@ -417,6 +443,11 @@ function log(message: string) {
   const item = document.createElement("li");
   item.textContent = message;
   logList.prepend(item);
+}
+
+async function sha256Hex(buffer: ArrayBuffer) {
+  const hash = await crypto.subtle.digest("SHA-256", buffer);
+  return [...new Uint8Array(hash)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
 function formatBytes(bytes: number) {
