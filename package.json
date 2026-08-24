@@ -6,5 +6,8 @@
   "scripts": {
     "dev": "node backend/server.ts",
     "start": "node backend/server.ts"
+  },
+  "dependencies": {
+    "ws": "^8.21.3"
   }
 }
