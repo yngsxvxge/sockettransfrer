@@ -22,6 +22,18 @@ npm run dev
 
 Abra `http://localhost:3000` em dois navegadores ou dispositivos na mesma rede.
 
+## TURN opcional
+
+Por padrao o app usa apenas STUN publico. Para melhorar conexoes fora da rede local
+ou em NATs restritos, configure um servidor TURN:
+
+```bash
+TURN_URLS=turn:turn.example.com:3478 TURN_USERNAME=user TURN_CREDENTIAL=pass npm run dev
+```
+
+`TURN_URLS` aceita uma lista separada por virgula, por exemplo
+`turn:host:3478,turns:host:5349`.
+
 ## Estrutura
 
 ```text

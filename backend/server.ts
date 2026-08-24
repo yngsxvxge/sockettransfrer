@@ -30,6 +30,12 @@ const mimeTypes: Record<string, string> = {
 const server = createServer((req, res) => {
   const url = new URL(req.url ?? "/", `http://${req.headers.host}`);
 
+  if (url.pathname === "/config.js") {
+    res.writeHead(200, { "content-type": "text/javascript; charset=utf-8" });
+    res.end(`window.TRANSFER_CONFIG = ${JSON.stringify(createClientConfig())};`);
+    return;
+  }
+
   if (url.pathname === "/app.js") {
     const source = readFileSync(join(publicDir, "app.ts"), "utf8");
     res.writeHead(200, { "content-type": "text/javascript; charset=utf-8" });
@@ -173,6 +179,21 @@ function createSessionCode() {
 
 function randomId() {
   return randomBytes(8).toString("hex");
+}
+
+function createClientConfig() {
+  const iceServers: RTCIceServer[] = [{ urls: "stun:stun.l.google.com:19302" }];
+  const turnUrls = process.env.TURN_URLS?.split(",").map((url) => url.trim()).filter(Boolean);
+
+  if (turnUrls?.length) {
+    iceServers.push({
+      urls: turnUrls,
+      username: process.env.TURN_USERNAME,
+      credential: process.env.TURN_CREDENTIAL
+    });
+  }
+
+  return { iceServers };
 }
 
 function createHandshakeResponse(key: string) {

@@ -13,6 +13,9 @@ const progressText = queryElement<HTMLElement>("#progressText");
 const logList = queryElement<HTMLUListElement>("#log");
 
 const chunkSize = 16 * 1024;
+const transferConfig = (window as TransferWindow).TRANSFER_CONFIG ?? {
+  iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
+};
 let ws: WebSocket | undefined;
 let peerConnection: RTCPeerConnection | undefined;
 let dataChannel: RTCDataChannel | undefined;
@@ -52,6 +55,13 @@ type IncomingFile = {
 type SavePickerWindow = Window &
   typeof globalThis & {
     showSaveFilePicker?: (options: { suggestedName: string }) => Promise<FileSystemFileHandle>;
+  };
+
+type TransferWindow = Window &
+  typeof globalThis & {
+    TRANSFER_CONFIG?: {
+      iceServers: RTCIceServer[];
+    };
   };
 
 createSessionButton.addEventListener("click", () => {
@@ -140,7 +150,7 @@ function connectSocket() {
 
 function preparePeerConnection(isInitiator: boolean) {
   peerConnection = new RTCPeerConnection({
-    iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
+    iceServers: transferConfig.iceServers
   });
 
   peerConnection.addEventListener("icecandidate", (event) => {
