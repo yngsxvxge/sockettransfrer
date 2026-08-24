@@ -5,6 +5,18 @@
   "type": "module",
   "scripts": {
     "dev": "node backend/server.ts",
+    "dev:frontend": "vite --host 0.0.0.0",
+    "build": "vite build",
+    "typecheck": "tsc --noEmit",
     "start": "node backend/server.ts"
+  },
+  "dependencies": {
+    "ws": "^8.21.3"
+  },
+  "devDependencies": {
+    "@types/node": "^26.2.0",
+    "@types/ws": "^8.18.1",
+    "typescript": "^7.0.2",
+    "vite": "^8.2.2"
   }
 }
