@@ -1,0 +1,10 @@
+{
+  "name": "transfer",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node backend/server.ts",
+    "start": "node backend/server.ts"
+  }
+}

@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Transfer</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main>
+      <section class="panel">
+        <h1>Transfer</h1>
+        <p>Crie uma sessao, compartilhe o codigo e envie arquivos direto pelo navegador.</p>
+
+        <div class="actions">
+          <button id="createSession">Criar sessao</button>
+          <form id="joinForm">
+            <input id="sessionCode" placeholder="Codigo" maxlength="6" autocomplete="off" />
+            <button type="submit">Entrar</button>
+          </form>
+        </div>
+
+        <div class="status">
+          <span id="statusText">Desconectado</span>
+          <strong id="codeText"></strong>
+        </div>
+      </section>
+
+      <section class="panel transfer">
+        <input id="fileInput" type="file" disabled />
+        <button id="sendFile" disabled>Enviar arquivo</button>
+        <progress id="progress" value="0" max="100"></progress>
+        <ul id="log"></ul>
+      </section>
+    </main>
+
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>
