@@ -6,8 +6,9 @@ import { stripTypeScriptTypes } from "node:module";
 import { WebSocket, WebSocketServer } from "ws";
 
 const port = Number(process.env.PORT ?? 3000);
+const sessionTtlMs = Number(process.env.SESSION_TTL_MS ?? 30 * 60 * 1000);
 const publicDir = join(process.cwd(), "frontend");
-const sessions = new Map<string, Set<Client>>();
+const sessions = new Map<string, Session>();
 
 type Json = Record<string, unknown>;
 
@@ -15,6 +16,14 @@ type Client = {
   id: string;
   socket: WebSocket;
   sessionCode?: string;
+};
+
+type Session = {
+  code: string;
+  clients: Set<Client>;
+  createdAt: number;
+  expiresAt: number;
+  expiresTimer: NodeJS.Timeout;
 };
 
 const mimeTypes: Record<string, string> = {
@@ -80,32 +89,38 @@ function handleMessage(client: Client, rawMessage: string) {
 
   if (message.type === "create") {
     leaveSession(client);
-    const code = createSessionCode();
-    sessions.set(code, new Set([client]));
-    client.sessionCode = code;
-    send(client, { type: "created", code, participantId: client.id });
+    const session = createSession();
+    session.clients.add(client);
+    client.sessionCode = session.code;
+    send(client, {
+      type: "created",
+      code: session.code,
+      expiresAt: session.expiresAt,
+      participantId: client.id
+    });
     return;
   }
 
   if (message.type === "join" && typeof message.code === "string") {
     const code = message.code.trim().toUpperCase();
-    const peers = sessions.get(code);
+    const session = sessions.get(code);
 
-    if (!peers) {
+    if (!session || session.expiresAt <= Date.now()) {
+      if (session) expireSession(session.code);
       send(client, { type: "error", message: "Sessao nao encontrada." });
       return;
     }
 
-    if (peers.size >= 2) {
+    if (session.clients.size >= 2) {
       send(client, { type: "error", message: "Sessao cheia." });
       return;
     }
 
     leaveSession(client);
-    const existingPeers = [...peers].map((peer) => peer.id);
-    peers.add(client);
+    const existingPeers = [...session.clients].map((peer) => peer.id);
+    session.clients.add(client);
     client.sessionCode = code;
-    send(client, { type: "joined", code, participantId: client.id, peers: existingPeers });
+    send(client, { type: "joined", code, expiresAt: session.expiresAt, participantId: client.id, peers: existingPeers });
     broadcast(client, { type: "peer-joined", peerId: client.id });
     return;
   }
@@ -118,12 +133,12 @@ function handleMessage(client: Client, rawMessage: string) {
 function leaveSession(client: Client) {
   if (!client.sessionCode) return;
 
-  const peers = sessions.get(client.sessionCode);
-  peers?.delete(client);
+  const session = sessions.get(client.sessionCode);
+  session?.clients.delete(client);
   broadcast(client, { type: "peer-left", peerId: client.id });
 
-  if (!peers?.size) {
-    sessions.delete(client.sessionCode);
+  if (session && !session.clients.size) {
+    closeSession(session.code);
   }
 
   client.sessionCode = undefined;
@@ -132,7 +147,7 @@ function leaveSession(client: Client) {
 function broadcast(sender: Client, message: Json) {
   if (!sender.sessionCode) return;
 
-  for (const peer of sessions.get(sender.sessionCode) ?? []) {
+  for (const peer of sessions.get(sender.sessionCode)?.clients ?? []) {
     if (peer !== sender) send(peer, message);
   }
 }
@@ -150,6 +165,41 @@ function createSessionCode() {
   } while (sessions.has(code));
 
   return code;
+}
+
+function createSession() {
+  const code = createSessionCode();
+  const now = Date.now();
+  const session: Session = {
+    code,
+    clients: new Set(),
+    createdAt: now,
+    expiresAt: now + sessionTtlMs,
+    expiresTimer: setTimeout(() => expireSession(code), sessionTtlMs)
+  };
+
+  sessions.set(code, session);
+  return session;
+}
+
+function expireSession(code: string) {
+  const session = sessions.get(code);
+  if (!session) return;
+
+  for (const client of session.clients) {
+    send(client, { type: "session-expired", code });
+    client.sessionCode = undefined;
+  }
+
+  closeSession(code);
+}
+
+function closeSession(code: string) {
+  const session = sessions.get(code);
+  if (!session) return;
+
+  clearTimeout(session.expiresTimer);
+  sessions.delete(code);
 }
 
 function randomId() {

@@ -24,10 +24,11 @@ let incomingFile: IncomingFile | undefined;
 let pendingOutboundFile: File | undefined;
 
 type SignalingMessage =
-  | { type: "created"; code: string; participantId: string }
-  | { type: "joined"; code: string; participantId: string; peers: string[] }
+  | { type: "created"; code: string; expiresAt: number; participantId: string }
+  | { type: "joined"; code: string; expiresAt: number; participantId: string; peers: string[] }
   | { type: "peer-joined"; peerId: string }
   | { type: "peer-left"; peerId: string }
+  | { type: "session-expired"; code: string }
   | { type: "signal"; from: string; data: RtcSignal }
   | { type: "error"; message: string };
 
@@ -134,6 +135,15 @@ function connectSocket() {
     if (message.type === "peer-left") {
       setStatus("Par desconectado", "error");
       disableTransfer();
+      return;
+    }
+
+    if (message.type === "session-expired") {
+      sessionCode = "";
+      codeText.textContent = "";
+      setStatus("Sessao expirada", "error");
+      disableTransfer();
+      log("Sessao expirada. Crie uma nova sessao para continuar.");
       return;
     }
 

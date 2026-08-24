@@ -34,6 +34,15 @@ TURN_URLS=turn:turn.example.com:3478 TURN_USERNAME=user TURN_CREDENTIAL=pass npm
 `TURN_URLS` aceita uma lista separada por virgula, por exemplo
 `turn:host:3478,turns:host:5349`.
 
+## Expiracao de sessao
+
+As sessoes ficam em memoria, acabam automaticamente quando todos desconectam e
+tambem expiram por tempo. O padrao e 30 minutos:
+
+```bash
+SESSION_TTL_MS=1800000 npm run dev
+```
+
 ## Estrutura
 
 ```text
