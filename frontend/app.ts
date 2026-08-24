@@ -8,6 +8,7 @@ const fileInput = queryElement<HTMLInputElement>("#fileInput");
 const fileLabel = queryElement<HTMLSpanElement>("#fileLabel");
 const fileMeta = queryElement<HTMLElement>("#fileMeta");
 const sendFileButton = queryElement<HTMLButtonElement>("#sendFile");
+const pauseTransferButton = queryElement<HTMLButtonElement>("#pauseTransfer");
 const cancelTransferButton = queryElement<HTMLButtonElement>("#cancelTransfer");
 const progress = queryElement<HTMLProgressElement>("#progress");
 const progressText = queryElement<HTMLElement>("#progressText");
@@ -26,6 +27,8 @@ let pendingIncomingChunk: Extract<FileMessage, { kind: "file-chunk" }> | undefin
 let outboundQueue: File[] = [];
 let pendingOutboundFile: File | undefined;
 let transferCancelled = false;
+let transferPaused = false;
+let resumeTransfer: (() => void) | undefined;
 
 type SignalingMessage =
   | { type: "created"; code: string; expiresAt: number; participantId: string }
@@ -47,6 +50,8 @@ type FileMessage =
   | { kind: "file-ready" }
   | { kind: "file-rejected" }
   | { kind: "file-cancel" }
+  | { kind: "file-pause" }
+  | { kind: "file-resume" }
   | { kind: "file-received" }
   | { kind: "file-done" };
 
@@ -100,7 +105,9 @@ sendFileButton.addEventListener("click", () => {
 
   outboundQueue = files;
   transferCancelled = false;
+  transferPaused = false;
   sendFileButton.disabled = true;
+  pauseTransferButton.disabled = false;
   cancelTransferButton.disabled = false;
   setProgress(0);
   log(`Fila criada com ${files.length} arquivo${files.length === 1 ? "" : "s"}.`);
@@ -110,6 +117,19 @@ sendFileButton.addEventListener("click", () => {
 cancelTransferButton.addEventListener("click", () => {
   cancelTransfer("Transferencia cancelada.");
   dataChannel?.send(JSON.stringify({ kind: "file-cancel" }));
+});
+
+pauseTransferButton.addEventListener("click", () => {
+  if (transferPaused) {
+    setTransferPaused(false);
+    dataChannel?.send(JSON.stringify({ kind: "file-resume" }));
+    log("Transferencia retomada.");
+    return;
+  }
+
+  setTransferPaused(true);
+  dataChannel?.send(JSON.stringify({ kind: "file-pause" }));
+  log("Transferencia pausada.");
 });
 
 function connectSocket() {
@@ -266,6 +286,7 @@ async function startFileSend() {
     }
 
     await waitForBuffer();
+    await waitIfPaused();
     const chunk = await file.slice(offset, offset + chunkSize).arrayBuffer();
     const sha256 = await sha256Hex(chunk);
     dataChannel.send(JSON.stringify({ kind: "file-chunk", index, size: chunk.byteLength, sha256 }));
@@ -333,6 +354,18 @@ async function handleFileMessage(event: MessageEvent<string | ArrayBuffer>) {
       return;
     }
 
+    if (message.kind === "file-pause") {
+      setTransferPaused(true);
+      log("Transferencia pausada pelo outro lado.");
+      return;
+    }
+
+    if (message.kind === "file-resume") {
+      setTransferPaused(false);
+      log("Transferencia retomada pelo outro lado.");
+      return;
+    }
+
     if (message.kind === "file-received") {
       offerNextFile();
       return;
@@ -388,6 +421,7 @@ async function prepareIncomingFile(message: Extract<FileMessage, { kind: "file-o
           };
 
           saveButton.disabled = true;
+          pauseTransferButton.disabled = false;
           cancelTransferButton.disabled = false;
           if (item.firstChild) item.firstChild.textContent = `Recebendo ${message.name}... `;
           dataChannel?.send(JSON.stringify({ kind: "file-ready" }));
@@ -410,6 +444,7 @@ async function prepareIncomingFile(message: Extract<FileMessage, { kind: "file-o
     received: 0
   };
   log(`Recebendo ${message.name} em memoria...`);
+  pauseTransferButton.disabled = false;
   cancelTransferButton.disabled = false;
   dataChannel?.send(JSON.stringify({ kind: "file-ready" }));
 }
@@ -473,6 +508,7 @@ async function finishIncomingFile() {
 
 async function cancelTransfer(message: string) {
   transferCancelled = true;
+  setTransferPaused(false);
   outboundQueue = [];
   pendingOutboundFile = undefined;
   pendingIncomingChunk = undefined;
@@ -494,6 +530,14 @@ function waitForBuffer() {
   });
 }
 
+function waitIfPaused() {
+  if (!transferPaused) return Promise.resolve();
+
+  return new Promise<void>((resolve) => {
+    resumeTransfer = resolve;
+  });
+}
+
 function sendSignal(message: Record<string, unknown>) {
   ws?.send(JSON.stringify(message));
 }
@@ -511,12 +555,25 @@ function setProgress(value: number) {
 function disableTransfer() {
   fileInput.disabled = true;
   sendFileButton.disabled = true;
+  pauseTransferButton.disabled = true;
   cancelTransferButton.disabled = true;
 }
 
 function resetTransferState() {
+  setTransferPaused(false);
+  pauseTransferButton.disabled = true;
   cancelTransferButton.disabled = true;
   sendFileButton.disabled = !dataChannel || dataChannel.readyState !== "open";
+}
+
+function setTransferPaused(paused: boolean) {
+  transferPaused = paused;
+  pauseTransferButton.textContent = paused ? "Continuar" : "Pausar";
+
+  if (!paused && resumeTransfer) {
+    resumeTransfer();
+    resumeTransfer = undefined;
+  }
 }
 
 function log(message: string) {

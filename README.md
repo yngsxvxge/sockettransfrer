@@ -19,6 +19,7 @@ do chunk recebido antes de gravar, interrompendo a transferencia se houver diver
 Transferencias em andamento podem ser canceladas por qualquer participante.
 Tambem e possivel selecionar multiplos arquivos; eles entram em fila e sao enviados
 um por vez pelo mesmo canal.
+Durante uma transferencia, qualquer participante pode pausar e retomar o fluxo.
 
 ## Rodar
 
