@@ -17,6 +17,8 @@ API, ele cai para o modo compativel e monta o arquivo em memoria no final.
 Cada chunk enviado pelo DataChannel carrega um SHA-256. O receptor calcula o hash
 do chunk recebido antes de gravar, interrompendo a transferencia se houver divergencia.
 Transferencias em andamento podem ser canceladas por qualquer participante.
+Tambem e possivel selecionar multiplos arquivos; eles entram em fila e sao enviados
+um por vez pelo mesmo canal.
 
 ## Rodar
 

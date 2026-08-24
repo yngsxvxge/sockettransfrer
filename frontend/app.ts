@@ -23,6 +23,7 @@ let dataChannel: RTCDataChannel | undefined;
 let sessionCode = "";
 let incomingFile: IncomingFile | undefined;
 let pendingIncomingChunk: Extract<FileMessage, { kind: "file-chunk" }> | undefined;
+let outboundQueue: File[] = [];
 let pendingOutboundFile: File | undefined;
 let transferCancelled = false;
 
@@ -46,6 +47,7 @@ type FileMessage =
   | { kind: "file-ready" }
   | { kind: "file-rejected" }
   | { kind: "file-cancel" }
+  | { kind: "file-received" }
   | { kind: "file-done" };
 
 type IncomingFile = {
@@ -76,9 +78,11 @@ createSessionButton.addEventListener("click", () => {
 });
 
 fileInput.addEventListener("change", () => {
-  const file = fileInput.files?.[0];
-  fileLabel.textContent = file?.name ?? "Selecionar arquivo";
-  fileMeta.textContent = file ? formatBytes(file.size) : "Nenhum arquivo selecionado";
+  const files = [...(fileInput.files ?? [])];
+  const totalSize = files.reduce((total, file) => total + file.size, 0);
+  fileLabel.textContent =
+    files.length === 0 ? "Selecionar arquivo" : files.length === 1 ? files[0].name : `${files.length} arquivos`;
+  fileMeta.textContent = files.length ? formatBytes(totalSize) : "Nenhum arquivo selecionado";
 });
 
 joinForm.addEventListener("submit", (event) => {
@@ -91,16 +95,16 @@ joinForm.addEventListener("submit", (event) => {
 });
 
 sendFileButton.addEventListener("click", () => {
-  const file = fileInput.files?.[0];
-  if (!file || !dataChannel || dataChannel.readyState !== "open") return;
+  const files = [...(fileInput.files ?? [])];
+  if (!files.length || !dataChannel || dataChannel.readyState !== "open") return;
 
-  pendingOutboundFile = file;
+  outboundQueue = files;
   transferCancelled = false;
   sendFileButton.disabled = true;
   cancelTransferButton.disabled = false;
   setProgress(0);
-  log(`Aguardando aceite: ${file.name}`);
-  dataChannel.send(JSON.stringify({ kind: "file-offer", name: file.name, size: file.size, type: file.type }));
+  log(`Fila criada com ${files.length} arquivo${files.length === 1 ? "" : "s"}.`);
+  offerNextFile();
 });
 
 cancelTransferButton.addEventListener("click", () => {
@@ -272,8 +276,29 @@ async function startFileSend() {
   }
 
   dataChannel.send(JSON.stringify({ kind: "file-done" }));
-  resetTransferState();
   log("Arquivo enviado.");
+}
+
+function offerNextFile() {
+  if (!dataChannel || dataChannel.readyState !== "open") return;
+
+  pendingOutboundFile = outboundQueue.shift();
+  if (!pendingOutboundFile) {
+    resetTransferState();
+    log("Fila concluida.");
+    return;
+  }
+
+  setProgress(0);
+  log(`Aguardando aceite: ${pendingOutboundFile.name}`);
+  dataChannel.send(
+    JSON.stringify({
+      kind: "file-offer",
+      name: pendingOutboundFile.name,
+      size: pendingOutboundFile.size,
+      type: pendingOutboundFile.type
+    })
+  );
 }
 
 async function handleFileMessage(event: MessageEvent<string | ArrayBuffer>) {
@@ -296,6 +321,7 @@ async function handleFileMessage(event: MessageEvent<string | ArrayBuffer>) {
     }
 
     if (message.kind === "file-rejected") {
+      outboundQueue = [];
       pendingOutboundFile = undefined;
       resetTransferState();
       log("Transferencia recusada ou cancelada.");
@@ -304,6 +330,11 @@ async function handleFileMessage(event: MessageEvent<string | ArrayBuffer>) {
 
     if (message.kind === "file-cancel") {
       await cancelTransfer("Transferencia cancelada pelo outro lado.");
+      return;
+    }
+
+    if (message.kind === "file-received") {
+      offerNextFile();
       return;
     }
 
@@ -416,6 +447,7 @@ async function finishIncomingFile() {
     await incomingFile.writeQueue;
     await incomingFile.writable.close();
     log(`${incomingFile.name} salvo no disco.`);
+    dataChannel?.send(JSON.stringify({ kind: "file-received" }));
     incomingFile = undefined;
     resetTransferState();
     setProgress(100);
@@ -432,6 +464,7 @@ async function finishIncomingFile() {
     link.textContent = `Baixar ${incomingFile.name}`;
     item.append(link);
     logList.prepend(item);
+    dataChannel?.send(JSON.stringify({ kind: "file-received" }));
     incomingFile = undefined;
     resetTransferState();
     setProgress(100);
@@ -440,6 +473,7 @@ async function finishIncomingFile() {
 
 async function cancelTransfer(message: string) {
   transferCancelled = true;
+  outboundQueue = [];
   pendingOutboundFile = undefined;
   pendingIncomingChunk = undefined;
 
