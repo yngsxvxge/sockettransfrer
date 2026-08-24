@@ -8,6 +8,7 @@ import { WebSocket, WebSocketServer } from "ws";
 const port = Number(process.env.PORT ?? 3000);
 const sessionTtlMs = Number(process.env.SESSION_TTL_MS ?? 30 * 60 * 1000);
 const publicDir = join(process.cwd(), "frontend");
+const distDir = join(process.cwd(), "dist");
 const sessions = new Map<string, Session>();
 
 type Json = Record<string, unknown>;
@@ -29,6 +30,7 @@ type Session = {
 const mimeTypes: Record<string, string> = {
   ".html": "text/html; charset=utf-8",
   ".js": "text/javascript; charset=utf-8",
+  ".ts": "text/javascript; charset=utf-8",
   ".css": "text/css; charset=utf-8"
 };
 
@@ -48,10 +50,18 @@ const server = createServer((req, res) => {
     return;
   }
 
-  const requestedPath = url.pathname === "/" ? "/index.html" : url.pathname;
-  const filePath = normalize(join(publicDir, requestedPath));
+  if (url.pathname === "/app.ts") {
+    const source = readFileSync(join(publicDir, "app.ts"), "utf8");
+    res.writeHead(200, { "content-type": "text/javascript; charset=utf-8" });
+    res.end(stripTypeScriptTypes(source));
+    return;
+  }
 
-  if (!filePath.startsWith(publicDir) || !existsSync(filePath)) {
+  const requestedPath = url.pathname === "/" ? "/index.html" : url.pathname;
+  const staticDir = existsSync(distDir) ? distDir : publicDir;
+  const filePath = normalize(join(staticDir, requestedPath));
+
+  if (!filePath.startsWith(staticDir) || !existsSync(filePath)) {
     res.writeHead(404);
     res.end("Not found");
     return;

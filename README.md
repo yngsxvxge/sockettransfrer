@@ -28,6 +28,20 @@ npm run dev
 
 Abra `http://localhost:3000` em dois navegadores ou dispositivos na mesma rede.
 
+Para desenvolvimento do front com Vite, deixe o backend rodando em uma janela e
+rode o Vite em outra:
+
+```bash
+npm run dev
+npm run dev:frontend
+```
+
+Para gerar o build do front:
+
+```bash
+npm run build
+```
+
 ## TURN opcional
 
 Por padrao o app usa apenas STUN publico. Para melhorar conexoes fora da rede local
