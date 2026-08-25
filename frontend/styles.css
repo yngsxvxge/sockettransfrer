@@ -388,6 +388,10 @@ progress::-webkit-progress-value {
   .connection-pill {
     width: fit-content;
     max-width: 420px;
+    position: fixed;
+    top: clamp(28px, 4vh, 56px);
+    right: clamp(48px, 5vw, 96px);
+    z-index: 10;
   }
 
   .workspace {
