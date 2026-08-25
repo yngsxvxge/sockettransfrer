@@ -17,7 +17,7 @@ void initialize();
 async function initialize() {
   try {
     const config = await loadConfig();
-    signaling = new SignalingClient({ message: handleSignalingMessage, close: handleSocketClose });
+    signaling = new SignalingClient(config.wsUrl, { message: handleSignalingMessage, close: handleSocketClose });
     peer = new PeerConnection(config, {
       signal: (signal) => signaling.sendSignal(signal),
       channel: (channel) => transfer.attachChannel(channel),
@@ -33,6 +33,23 @@ function bindUi() {
   dom.createSessionButton.addEventListener("click", () => {
     signaling.connect();
     signaling.whenOpen(() => signaling.send({ type: "create" }));
+  });
+  dom.reconnectButton.addEventListener("click", () => {
+    if (!sessionCode) {
+      dom.createSessionButton.click();
+      return;
+    }
+    peer.close();
+    signaling.close();
+    setStatus(dom, "Reconectando...", "pending");
+    signaling.connect();
+    signaling.whenOpen(() => signaling.send({ type: "join", code: sessionCode }));
+  });
+  dom.copyCodeButton.addEventListener("click", async () => {
+    if (!sessionCode || !navigator.clipboard) return;
+    await navigator.clipboard.writeText(sessionCode);
+    dom.copyCodeButton.textContent = "Copiado";
+    window.setTimeout(() => { dom.copyCodeButton.textContent = "Copiar"; }, 1500);
   });
   dom.joinForm.addEventListener("submit", (event) => {
     event.preventDefault();
@@ -84,5 +101,7 @@ async function handleSignalingMessage(message: SignalingMessage) {
 
 function handleSocketClose() {
   setStatus(dom, "WebSocket desconectado", "error");
+  peer.close();
   disableTransfer(dom);
+  log(dom, "Conexao perdida. Entre novamente na sessao para reconectar.");
 }

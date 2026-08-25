@@ -8,12 +8,11 @@ type SignalingHandlers = {
 export class SignalingClient {
   private socket?: WebSocket;
 
-  constructor(private readonly handlers: SignalingHandlers) {}
+  constructor(private readonly wsUrl: string, private readonly handlers: SignalingHandlers) {}
 
   connect() {
     if (this.socket && this.socket.readyState <= WebSocket.OPEN) return this.socket;
-    const protocol = location.protocol === "https:" ? "wss" : "ws";
-    this.socket = new WebSocket(`${protocol}://${location.host}/ws`);
+    this.socket = new WebSocket(this.wsUrl);
     this.socket.addEventListener("message", (event: MessageEvent<string>) => {
       this.handlers.message(JSON.parse(event.data) as SignalingMessage);
     });
@@ -32,5 +31,9 @@ export class SignalingClient {
 
   sendSignal(data: RtcSignal) {
     this.send({ type: "signal", data });
+  }
+
+  close() {
+    this.socket?.close();
   }
 }

@@ -27,12 +27,16 @@
               <span class="panel-kicker">Conexao</span>
               <h2 id="sessionTitle">Sessao</h2>
             </div>
-            <strong id="codeText"></strong>
+            <div class="session-code">
+              <strong id="codeText"></strong>
+              <button id="copyCode" type="button">Copiar</button>
+            </div>
           </div>
           <div class="actions">
             <button id="createSession">Criar sessao</button>
+            <button id="reconnect" type="button">Reconectar</button>
             <form id="joinForm">
-              <input id="sessionCode" placeholder="Codigo" maxlength="6" autocomplete="off" />
+              <input id="sessionCode" placeholder="Codigo" maxlength="8" autocomplete="off" />
               <button type="submit">Entrar</button>
             </form>
           </div>

@@ -1,5 +1,6 @@
+import { sha256 } from "@noble/hashes/sha2.js";
 import { disableTransfer, log, setProgress, type Dom } from "./dom";
-import { formatBytes, sha256Hex } from "./format";
+import { bytesToHex, formatBytes, sha256Hex } from "./format";
 import type { FileMessage, IncomingFile, SavePickerWindow } from "./types";
 
 const chunkSize = 16 * 1024;
@@ -67,19 +68,21 @@ export class TransferManager {
     log(this.dom, `Enviando ${file.name}...`);
     let offset = 0;
     let index = 0;
+    const fileHash = sha256.create();
     while (offset < file.size) {
       if (this.transferCancelled) return;
       await this.waitForBuffer();
       await this.waitIfPaused();
       const chunk = await file.slice(offset, offset + chunkSize).arrayBuffer();
       const sha256 = await sha256Hex(chunk);
+      fileHash.update(new Uint8Array(chunk));
       this.channel.send(JSON.stringify({ kind: "file-chunk", index, size: chunk.byteLength, sha256 }));
       this.channel.send(chunk);
       offset += chunk.byteLength;
       index += 1;
       setProgress(this.dom, Math.round((offset / file.size) * 100));
     }
-    this.channel.send(JSON.stringify({ kind: "file-done" }));
+    this.channel.send(JSON.stringify({ kind: "file-done", sha256: bytesToHex(fileHash.digest()) }));
     log(this.dom, "Arquivo enviado.");
   }
 
@@ -126,7 +129,7 @@ export class TransferManager {
     } else if (message.kind === "file-received") {
       this.offerNextFile();
     } else if (message.kind === "file-done" && this.incomingFile) {
-      await this.finishIncomingFile();
+      await this.finishIncomingFile(message.sha256);
     }
   }
 
@@ -157,8 +160,14 @@ export class TransferManager {
       }, { once: true });
       return;
     }
-    this.incomingFile = { name: message.name, size: message.size, type: message.type, chunks: [], received: 0 };
-    log(this.dom, `Recebendo ${message.name} em memoria...`);
+    const opfsFile = await this.createOpfsFile(message.name);
+    if (opfsFile) {
+      this.incomingFile = { name: message.name, size: message.size, type: message.type, received: 0, opfsHandle: opfsFile.handle, writable: opfsFile.writable, writeQueue: Promise.resolve(), fileHash: sha256.create() };
+      log(this.dom, `Recebendo ${message.name} em armazenamento temporario...`);
+    } else {
+    this.incomingFile = { name: message.name, size: message.size, type: message.type, chunks: [], received: 0, fileHash: sha256.create() };
+      log(this.dom, `Recebendo ${message.name} em memoria...`);
+    }
     this.enableControls();
     this.channel?.send(JSON.stringify({ kind: "file-ready" }));
   }
@@ -177,16 +186,34 @@ export class TransferManager {
       this.incomingFile.writeQueue = (this.incomingFile.writeQueue ?? Promise.resolve()).then(() => this.incomingFile?.writable?.write(chunk));
       await this.incomingFile.writeQueue;
     } else this.incomingFile.chunks?.push(chunk);
+    this.incomingFile.fileHash?.update(new Uint8Array(chunk));
     this.incomingFile.received += chunk.byteLength;
     setProgress(this.dom, Math.round((this.incomingFile.received / this.incomingFile.size) * 100));
   }
 
-  private async finishIncomingFile() {
+  private async finishIncomingFile(expectedHash: string) {
     if (!this.incomingFile) return;
+    const actualHash = this.incomingFile.fileHash ? bytesToHex(this.incomingFile.fileHash.digest()) : "";
+    if (actualHash !== expectedHash) {
+      this.channel?.send(JSON.stringify({ kind: "file-rejected" }));
+      await this.cancelTransfer("Falha de integridade no arquivo recebido.");
+      return;
+    }
     if (this.incomingFile.writable) {
       await this.incomingFile.writeQueue;
       await this.incomingFile.writable.close();
-      log(this.dom, `${this.incomingFile.name} salvo no disco.`);
+      if (this.incomingFile.opfsHandle) {
+        const blob = await (await this.incomingFile.opfsHandle.getFile()).arrayBuffer();
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(new Blob([blob], { type: this.incomingFile.type }));
+        link.download = this.incomingFile.name;
+        link.textContent = `Baixar ${this.incomingFile.name}`;
+        const item = document.createElement("li");
+        item.append(link);
+        this.dom.logList.prepend(item);
+      } else {
+        log(this.dom, `${this.incomingFile.name} salvo no disco.`);
+      }
     } else if (this.incomingFile.chunks) {
       const blob = new Blob(this.incomingFile.chunks, { type: this.incomingFile.type });
       const link = document.createElement("a");
@@ -201,6 +228,21 @@ export class TransferManager {
     this.incomingFile = undefined;
     this.resetState();
     setProgress(this.dom, 100);
+  }
+
+  private async createOpfsFile(name: string) {
+    const storage = navigator.storage as Navigator["storage"] & {
+      getDirectory?: () => Promise<FileSystemDirectoryHandle>;
+    };
+    if (!storage.getDirectory) return undefined;
+    try {
+      const root = await storage.getDirectory();
+      const safeName = `${crypto.randomUUID()}-${name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+      const handle = await root.getFileHandle(safeName, { create: true });
+      return { handle, writable: await handle.createWritable() };
+    } catch {
+      return undefined;
+    }
   }
 
   private async cancelTransfer(message: string) {

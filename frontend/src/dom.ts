@@ -3,10 +3,12 @@ export type Dom = ReturnType<typeof createDom>;
 export function createDom() {
   return {
     createSessionButton: query<HTMLButtonElement>("#createSession"),
+    reconnectButton: query<HTMLButtonElement>("#reconnect"),
     joinForm: query<HTMLFormElement>("#joinForm"),
     sessionCodeInput: query<HTMLInputElement>("#sessionCode"),
     statusText: query<HTMLSpanElement>("#statusText"),
     codeText: query<HTMLElement>("#codeText"),
+    copyCodeButton: query<HTMLButtonElement>("#copyCode"),
     connectionPill: query<HTMLElement>("#connectionPill"),
     fileInput: query<HTMLInputElement>("#fileInput"),
     fileLabel: query<HTMLSpanElement>("#fileLabel"),

@@ -35,6 +35,20 @@ O backend fica em `http://localhost:3000` e o frontend Vite em
 `http://localhost:5173`. Abra o endereco do Vite em dois navegadores ou
 dispositivos na mesma rede.
 
+Para publicar frontend e backend em dominios diferentes, configure no build do
+frontend:
+
+```bash
+VITE_API_URL=https://api.exemplo.com VITE_WS_URL=wss://api.exemplo.com/ws npm run build
+```
+
+No backend, use `PUBLIC_API_URL`, `PUBLIC_WS_URL` ou mantenha essas URLs no
+frontend. Para restringir origens e proteger o WebSocket:
+
+```bash
+ALLOWED_ORIGINS=https://app.exemplo.com npm run dev:backend
+```
+
 Cada parte tambem pode ser iniciada dentro do proprio diretorio:
 
 ```bash
@@ -90,3 +104,11 @@ frontend/styles.css
 O backend expõe apenas a configuracao em `/config.json` e a sinalizacao em `/ws`.
 O Vite compila o frontend para `dist/`, que pode ser servido pelo backend em
 producao com `npm run build` e `npm run start`.
+
+O endpoint `/health` pode ser usado pelo proxy ou monitoramento. O backend tambem
+aplica limites de mensagens, sessoes, criacoes e tentativas de entrada por IP.
+Os testes de integracao rodam com:
+
+```bash
+npm run test --workspace backend
+```

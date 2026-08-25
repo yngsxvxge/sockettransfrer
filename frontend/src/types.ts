@@ -21,7 +21,7 @@ export type FileMessage =
   | { kind: "file-pause" }
   | { kind: "file-resume" }
   | { kind: "file-received" }
-  | { kind: "file-done" };
+  | { kind: "file-done"; sha256: string };
 
 export type IncomingFile = {
   name: string;
@@ -30,10 +30,17 @@ export type IncomingFile = {
   received: number;
   chunks?: ArrayBuffer[];
   writable?: FileSystemWritableFileStream;
+  opfsHandle?: FileSystemFileHandle;
   writeQueue?: Promise<void>;
+  fileHash?: { update(data: Uint8Array): unknown; digest(): Uint8Array };
 };
 
 export type TransferConfig = { iceServers: RTCIceServer[] };
+
+export type ClientRuntimeConfig = TransferConfig & {
+  apiUrl: string;
+  wsUrl: string;
+};
 
 export type SavePickerWindow = Window &
   typeof globalThis & {
