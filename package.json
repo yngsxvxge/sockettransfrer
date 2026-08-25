@@ -2,21 +2,13 @@
   "name": "transfer",
   "version": "0.1.0",
   "private": true,
-  "type": "module",
+  "workspaces": ["backend", "frontend"],
   "scripts": {
-    "dev": "node backend/server.ts",
-    "dev:frontend": "vite --host 0.0.0.0",
-    "build": "vite build",
-    "typecheck": "tsc --noEmit",
-    "start": "node backend/server.ts"
-  },
-  "dependencies": {
-    "ws": "^8.21.3"
-  },
-  "devDependencies": {
-    "@types/node": "^26.2.0",
-    "@types/ws": "^8.18.1",
-    "typescript": "^7.0.2",
-    "vite": "^8.2.2"
+    "dev": "npm run dev:backend",
+    "dev:backend": "npm run dev --workspace backend",
+    "dev:frontend": "npm run dev --workspace frontend",
+    "build": "npm run build --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "start": "npm run start --workspace backend"
   }
 }

@@ -23,25 +23,51 @@ Durante uma transferencia, qualquer participante pode pausar e retomar o fluxo.
 
 ## Rodar
 
-```bash
-npm run dev
-```
-
-Abra `http://localhost:3000` em dois navegadores ou dispositivos na mesma rede.
-
-Para desenvolvimento do front com Vite, deixe o backend rodando em uma janela e
-rode o Vite em outra:
+O frontend e o backend rodam separadamente durante o desenvolvimento. Em duas
+janelas, rode:
 
 ```bash
-npm run dev
+npm run dev:backend
 npm run dev:frontend
 ```
 
-Para gerar o build do front:
+O backend fica em `http://localhost:3000` e o frontend Vite em
+`http://localhost:5173`. Abra o endereco do Vite em dois navegadores ou
+dispositivos na mesma rede.
+
+Para publicar frontend e backend em dominios diferentes, configure no build do
+frontend:
+
+```bash
+VITE_API_URL=https://api.exemplo.com VITE_WS_URL=wss://api.exemplo.com/ws npm run build
+```
+
+No backend, use `PUBLIC_API_URL`, `PUBLIC_WS_URL` ou mantenha essas URLs no
+frontend. Para restringir origens e proteger o WebSocket:
+
+```bash
+ALLOWED_ORIGINS=https://app.exemplo.com npm run dev:backend
+```
+
+Cada parte tambem pode ser iniciada dentro do proprio diretorio:
+
+```bash
+cd backend
+npm run dev
+
+cd frontend
+npm run dev
+```
+
+Para gerar os builds:
 
 ```bash
 npm run build
+npm run start
 ```
+
+O build gera o frontend em `dist/` e o backend compilado em `backend/dist/`.
+Depois, `npm run start` inicia o backend compilado.
 
 ## TURN opcional
 
@@ -68,10 +94,21 @@ SESSION_TTL_MS=1800000 npm run dev
 
 ```text
 backend/server.ts  # HTTP, WebSocket e sinalizacao WebRTC
-frontend/app.ts    # interface e transferencia via DataChannel
+frontend/src/       # frontend TypeScript modularizado
+frontend/package.json
+backend/package.json
 frontend/index.html
 frontend/styles.css
 ```
 
-O navegador continua carregando `/app.js`; o backend gera essa resposta a partir
-de `frontend/app.ts` em tempo de execucao.
+O backend expõe apenas a configuracao em `/config.json` e a sinalizacao em `/ws`.
+O Vite compila o frontend para `dist/`, que pode ser servido pelo backend em
+producao com `npm run build` e `npm run start`.
+
+O endpoint `/health` pode ser usado pelo proxy ou monitoramento. O backend tambem
+aplica limites de mensagens, sessoes, criacoes e tentativas de entrada por IP.
+Os testes de integracao rodam com:
+
+```bash
+npm run test --workspace backend
+```

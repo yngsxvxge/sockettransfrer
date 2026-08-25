@@ -115,6 +115,18 @@ p {
   margin-bottom: 8px;
 }
 
+.session-code {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.session-code button {
+  min-height: 32px;
+  padding: 0 10px;
+  font-size: 0.78rem;
+}
+
 .connection-pill {
   min-height: 44px;
   max-width: 320px;
@@ -388,6 +400,10 @@ progress::-webkit-progress-value {
   .connection-pill {
     width: fit-content;
     max-width: 420px;
+    position: fixed;
+    top: clamp(28px, 4vh, 56px);
+    right: clamp(48px, 5vw, 96px);
+    z-index: 10;
   }
 
   .workspace {
