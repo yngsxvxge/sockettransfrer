@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "node backend/server.ts",
+    "dev:backend": "node backend/server.ts",
     "dev:frontend": "vite --host 0.0.0.0",
     "build": "vite build",
     "typecheck": "tsc --noEmit",

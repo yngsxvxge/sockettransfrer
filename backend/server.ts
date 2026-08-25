@@ -1,13 +1,11 @@
 import { randomBytes } from "node:crypto";
-import { createReadStream, existsSync, readFileSync } from "node:fs";
+import { createReadStream, existsSync } from "node:fs";
 import { extname, join, normalize } from "node:path";
 import { createServer } from "node:http";
-import { stripTypeScriptTypes } from "node:module";
 import { WebSocket, WebSocketServer } from "ws";
 
 const port = Number(process.env.PORT ?? 3000);
 const sessionTtlMs = Number(process.env.SESSION_TTL_MS ?? 30 * 60 * 1000);
-const publicDir = join(process.cwd(), "frontend");
 const distDir = join(process.cwd(), "dist");
 const sessions = new Map<string, Session>();
 
@@ -37,28 +35,14 @@ const mimeTypes: Record<string, string> = {
 const server = createServer((req, res) => {
   const url = new URL(req.url ?? "/", `http://${req.headers.host}`);
 
-  if (url.pathname === "/config.js") {
-    res.writeHead(200, { "content-type": "text/javascript; charset=utf-8" });
-    res.end(`window.TRANSFER_CONFIG = ${JSON.stringify(createClientConfig())};`);
-    return;
-  }
-
-  if (url.pathname === "/app.js") {
-    const source = readFileSync(join(publicDir, "app.ts"), "utf8");
-    res.writeHead(200, { "content-type": "text/javascript; charset=utf-8" });
-    res.end(stripTypeScriptTypes(source));
-    return;
-  }
-
-  if (url.pathname === "/app.ts") {
-    const source = readFileSync(join(publicDir, "app.ts"), "utf8");
-    res.writeHead(200, { "content-type": "text/javascript; charset=utf-8" });
-    res.end(stripTypeScriptTypes(source));
+  if (url.pathname === "/config.json") {
+    res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
+    res.end(JSON.stringify(createClientConfig()));
     return;
   }
 
   const requestedPath = url.pathname === "/" ? "/index.html" : url.pathname;
-  const staticDir = existsSync(distDir) ? distDir : publicDir;
+  const staticDir = distDir;
   const filePath = normalize(join(staticDir, requestedPath));
 
   if (!filePath.startsWith(staticDir) || !existsSync(filePath)) {

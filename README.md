@@ -29,11 +29,11 @@ npm run dev
 
 Abra `http://localhost:3000` em dois navegadores ou dispositivos na mesma rede.
 
-Para desenvolvimento do front com Vite, deixe o backend rodando em uma janela e
-rode o Vite em outra:
+O frontend e o backend rodam separadamente durante o desenvolvimento. Em duas
+janelas, rode:
 
 ```bash
-npm run dev
+npm run dev:backend
 npm run dev:frontend
 ```
 
@@ -68,10 +68,11 @@ SESSION_TTL_MS=1800000 npm run dev
 
 ```text
 backend/server.ts  # HTTP, WebSocket e sinalizacao WebRTC
-frontend/app.ts    # interface e transferencia via DataChannel
+frontend/src/       # frontend TypeScript modularizado
 frontend/index.html
 frontend/styles.css
 ```
 
-O navegador continua carregando `/app.js`; o backend gera essa resposta a partir
-de `frontend/app.ts` em tempo de execucao.
+O backend expõe apenas a configuracao em `/config.json` e a sinalizacao em `/ws`.
+O Vite compila o frontend para `dist/`, que pode ser servido pelo backend em
+producao com `npm run build` e `npm run start`.
