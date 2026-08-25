@@ -59,15 +59,15 @@ cd frontend
 npm run dev
 ```
 
-Para gerar o build do front:
+Para gerar os builds:
 
 ```bash
 npm run build
 npm run start
 ```
 
-O `build` gera o frontend em `dist/`. Depois, `npm run start` inicia o backend
-servindo esse build.
+O build gera o frontend em `dist/` e o backend compilado em `backend/dist/`.
+Depois, `npm run start` inicia o backend compilado.
 
 ## TURN opcional
 

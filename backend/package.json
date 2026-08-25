@@ -5,9 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "node server.ts",
+    "build": "tsc",
     "test": "node --test test/**/*.test.ts",
     "typecheck": "tsc --noEmit",
-    "start": "node server.ts"
+    "start": "node dist/server.js"
   },
   "dependencies": {
     "ws": "^8.21.3"
