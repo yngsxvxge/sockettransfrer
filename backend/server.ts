@@ -6,7 +6,8 @@ import { WebSocket, WebSocketServer } from "ws";
 
 const port = Number(process.env.PORT ?? 3000);
 const sessionTtlMs = Number(process.env.SESSION_TTL_MS ?? 30 * 60 * 1000);
-const distDir = join(process.cwd(), "dist");
+const projectDir = existsSync(join(process.cwd(), "dist")) ? process.cwd() : join(process.cwd(), "..");
+const distDir = join(projectDir, "dist");
 const sessions = new Map<string, Session>();
 
 type Json = Record<string, unknown>;

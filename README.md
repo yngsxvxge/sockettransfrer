@@ -23,12 +23,6 @@ Durante uma transferencia, qualquer participante pode pausar e retomar o fluxo.
 
 ## Rodar
 
-```bash
-npm run dev
-```
-
-Abra `http://localhost:3000` em dois navegadores ou dispositivos na mesma rede.
-
 O frontend e o backend rodam separadamente durante o desenvolvimento. Em duas
 janelas, rode:
 
@@ -37,11 +31,29 @@ npm run dev:backend
 npm run dev:frontend
 ```
 
+O backend fica em `http://localhost:3000` e o frontend Vite em
+`http://localhost:5173`. Abra o endereco do Vite em dois navegadores ou
+dispositivos na mesma rede.
+
+Cada parte tambem pode ser iniciada dentro do proprio diretorio:
+
+```bash
+cd backend
+npm run dev
+
+cd frontend
+npm run dev
+```
+
 Para gerar o build do front:
 
 ```bash
 npm run build
+npm run start
 ```
+
+O `build` gera o frontend em `dist/`. Depois, `npm run start` inicia o backend
+servindo esse build.
 
 ## TURN opcional
 
@@ -69,6 +81,8 @@ SESSION_TTL_MS=1800000 npm run dev
 ```text
 backend/server.ts  # HTTP, WebSocket e sinalizacao WebRTC
 frontend/src/       # frontend TypeScript modularizado
+frontend/package.json
+backend/package.json
 frontend/index.html
 frontend/styles.css
 ```
